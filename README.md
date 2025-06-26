@@ -1,4 +1,60 @@
-# quadcopter_gripper
+# IsaacLab Quadcopter Object Manipulation
+---
+## A deep reinforcement learning framework for training quadcopters to perform object manipulation tasks in Isaac Sim.
+
+
+## Introduction  
+**IsaacLab Quadcopter Manipulation** is a reinforcement learning framework designed to train drone-based robots to manipulate objects. The quadcopters are trained to identify, approach, grasp, and transport objects to designated locations, performing complex sequential tasks.
+
+Built on IsaacSim, this environment provides realistic physics-based drone-object interactions and supports over 4,000 parallel environments for scalable distributed training.
+
+## Key Features  
+- **Multi-Stage Task Learning**: Trains drones in sequential steps—approaching, grasping, transporting, and placing objects  
+- **High-Fidelity Physics Simulation**: Built on IsaacSim for precision physical interactions  
+- **Multi-Reward System**: Fine-grained reward signals for velocity control, object approach, grasping, and task completion  
+- **Detailed Analytics Tools**: Built-in visualization for tracking and analyzing reward contributions  
+- **Massive Parallel Training**: Run thousands of environments simultaneously to accelerate training  
+- **Gripper Control Mechanism**: Precision control for stable grasping and object handling  
+
+## Applications  
+This framework can be used for:
+
+- **Object Relocation Tasks**: Moving objects across surfaces like tables  
+- **Drone Precision Control**: Stable hovering and flight in various conditions  
+- **Drone-Object Interaction**: Performing airborne grasping and manipulation tasks  
+- **Algorithm Benchmarking**: Compare the performance of various RL algorithms  
+
+## Environment Configuration  
+- **Observation Space**: Includes robot states (linear/angular velocity, gravity vector), target position, gripper-object relation  
+- **Action Space**: Thrust control, moment control, and gripper joint control (7 dimensions)  
+- **Reward Components**:  
+  - Velocity penalties to encourage stable flight  
+  - Gripper-object distance for accurate targeting  
+  - Object lift reward to promote successful grasp  
+  - Target distance reward for task completion  
+
+## Results Analysis  
+Generates detailed reward analysis graphs during training:  
+
+- Track individual reward terms  
+- Analyze overall contribution to total reward  
+- Visualize key performance indicators  
+
+![rewards_analysis]  
+
+## Customization  
+The framework allows various customizations:
+
+- Adjust reward components and weights  
+- Modify observation space to tune task difficulty  
+- Change environment setup (table/object/target positions)  
+- Configure robot properties (thrust, gripper behavior)  
+
+## Requirements  
+- IsaacLab / IsaacSim  
+- PyTorch  
+- CUDA-enabled GPU (recommended)  
+- Python 3.8+
 
 ## Installation
 1. IsaacLab install
