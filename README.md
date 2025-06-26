@@ -21,8 +21,7 @@ This framework can be used for:
 
 - **Object Relocation Tasks**: Moving objects across surfaces like tables  
 - **Drone Precision Control**: Stable hovering and flight in various conditions  
-- **Drone-Object Interaction**: Performing airborne grasping and manipulation tasks  
-- **Algorithm Benchmarking**: Compare the performance of various RL algorithms  
+- **Drone-Object Interaction**: Performing airborne grasping and manipulation tasks   
 
 ## Environment Configuration  
 - **Observation Space**: Includes robot states (linear/angular velocity, gravity vector), target position, gripper-object relation  
@@ -51,9 +50,9 @@ The framework allows various customizations:
 - Configure robot properties (thrust, gripper behavior)  
 
 ## Requirements  
-- IsaacLab / IsaacSim  
+- IsaacLab(v2.0) / IsaacSim(v4.5)  
 - PyTorch  
-- CUDA-enabled GPU (recommended)  
+- CUDA-enabled GPU (RTX 3090 GPU recommended)  
 - Python 3.8+
 
 ## Installation
