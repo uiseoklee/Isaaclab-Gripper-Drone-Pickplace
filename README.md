@@ -6,7 +6,7 @@
 ## Introduction  
 **IsaacLab Quadcopter Manipulation** is a reinforcement learning framework designed to train drone-based robots to manipulate objects. The quadcopters are trained to identify, approach, grasp, and transport objects to designated locations, performing complex sequential tasks.
 
-Built on IsaacSim, this environment provides realistic physics-based drone-object interactions and supports over 4,000 parallel environments for scalable distributed training.
+Built on IsaacSim, this environment provides realistic physics-based drone-object interactions and supports over 128 parallel environments for scalable distributed training.
 
 ## Key Features  
 - **Multi-Stage Task Learning**: Trains drones in sequential steps—approaching, grasping, transporting, and placing objects  
