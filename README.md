@@ -1,5 +1,5 @@
 # IsaacLab Quadcopter Object Manipulation
----
+
 ## A deep reinforcement learning framework for training quadcopters to perform object manipulation tasks in Isaac Sim.
 
 
