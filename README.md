@@ -2,6 +2,7 @@
 
 ### A deep reinforcement learning framework for training quadcopters to perform object manipulation tasks in Isaac Sim.
 ![Demo](media/grisp_lift.gif)
+![Demo](media/grisp_lift_togoal.gif)
 
 ## Introduction  
 **IsaacLab Quadcopter Manipulation** is a reinforcement learning framework designed to train drone-based robots to manipulate objects. The quadcopters are trained to identify, approach, grasp, and transport objects to designated locations, performing complex sequential tasks.
