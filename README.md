@@ -13,7 +13,7 @@ Built on IsaacSim, this environment provides realistic physics-based drone-objec
 - **High-Fidelity Physics Simulation**: Built on IsaacSim for precision physical interactions  
 - **Multi-Reward System**: Fine-grained reward signals for velocity control, object approach, grasping, and task completion  
 - **Detailed Analytics Tools**: Built-in visualization for tracking and analyzing reward contributions  
-- **Massive Parallel Training**: Run thousands of environments simultaneously to accelerate training  
+- **Massive Parallel Training**: Run hundreds of environments simultaneously to accelerate training  
 - **Gripper Control Mechanism**: Precision control for stable grasping and object handling  
 
 ## Applications  
