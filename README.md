@@ -60,11 +60,18 @@ The framework allows various customizations:
   ```
   source\isaaclab_assets\isaaclab_assets\robots\quadcopter.py
   ```
-  and Paste within your IsaacLab's folder to
+2. Paste within your IsaacLab's folder to
   ```
   IsaacLab\source\isaaclab\assets\robots\
   ```
-3. Copy from source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\quadcopter_env.py and Paste within your IsaacLab's folder to IsaacLab\source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\
+3. Copy from
+  ```
+  source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\quadcopter_env.py
+  ```
+4. Paste within your IsaacLab's folder to
+  ```
+  IsaacLab\source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\
+  ```
 
 ## Training
 ```
