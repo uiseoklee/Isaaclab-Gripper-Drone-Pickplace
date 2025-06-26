@@ -56,8 +56,14 @@ The framework allows various customizations:
 - Python 3.8+
 
 ## Installation
-1. IsaacLab install
-2. Copy from source\isaaclab_assets\isaaclab_assets\robots\quadcopter.py and Paste within your IsaacLab's folder to IsaacLab\source\isaaclab\assets\robots\
+1. Copy from
+  ```
+  source\isaaclab_assets\isaaclab_assets\robots\quadcopter.py
+  ```
+  and Paste within your IsaacLab's folder to
+  ```
+  IsaacLab\source\isaaclab\assets\robots\
+  ```
 3. Copy from source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\quadcopter_env.py and Paste within your IsaacLab's folder to IsaacLab\source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\
 
 ## Training
