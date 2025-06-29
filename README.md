@@ -39,7 +39,7 @@ For complex manipulation tasks, effective reward design is critical. The relativ
 
 Our design philosophy follows two core principles:  
 
-- **Sequential Guidance**: The reward system guides the agent through a sequence of sub-tasks (e.g., approach -> lift -> move to goal). Rewards for later stages become more dominant as the agent gains proficiency in earlier ones.  
+- **Sequential Guidance**: The reward system guides the agent through a sequence of sub-tasks (e.g., approach -> grisp&lift -> move to goal). Rewards for later stages become more dominant as the agent gains proficiency in earlier ones.  
 - **Conditional Gating**: Rewards for later sub-tasks are gated by the successful completion of earlier ones. For example, the goal_distance reward is only active after the cube_lifted condition is true, enforcing the correct sequence.  
 
 ### Reward Contribution Over Time  
