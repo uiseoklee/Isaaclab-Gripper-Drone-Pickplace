@@ -2,7 +2,7 @@
 
 ### A deep reinforcement learning framework for training quadcopters to perform object manipulation tasks in Isaac Sim.  
 <img src="media/grisp_lift_f.gif" width="600"/>  
-<img src="media/128env_training.gif" width='800"/>  
+<img src="media/128env_training.gif" width="1200"/>  
 <img src="media/grisp_lift_togoal.gif" width="800"/>  
 
 ## Introduction  
