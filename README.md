@@ -1,7 +1,7 @@
 # Isaac Lab(Gym) Quadcopter Object Manipulation
 
 ### A deep reinforcement learning framework for training quadcopters to perform object manipulation tasks in Isaac Sim.  
-<img src="media/grisp_lift.gif" width="600"/>  
+<img src="media/grisp_lift_f.gif" width="600"/>  
 <img src="media/grisp_lift_togoal.gif" width="1000"/>  
 
 ## Introduction  
