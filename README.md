@@ -34,14 +34,29 @@ This framework can be used for:
   - Object lift reward to promote successful grasp  
   - Target distance reward for task completion  
 
-## Results Analysis  
-Generates detailed reward analysis graphs during training:  
+## Reward Design and Analysis  
+For complex manipulation tasks, effective reward design is critical. The relative ratio between reward components is more important than their absolute values, as a balanced structure is key to guiding the agent's learning process.  
 
-- Track individual reward terms  
-- Analyze overall contribution to total reward  
-- Visualize key performance indicators  
+Our design philosophy follows two core principles:  
 
-![rewards_analysis]  
+- **Sequential Guidance**: The reward system guides the agent through a sequence of sub-tasks (e.g., approach -> lift -> move to goal). Rewards for later stages become more dominant as the agent gains proficiency in earlier ones.  
+- **Conditional Gating**: Rewards for later sub-tasks are gated by the successful completion of earlier ones. For example, the goal_distance reward is only active after the cube_lifted condition is true, enforcing the correct sequence.  
+
+### Reward Contribution Over Time  
+The following graphs show how the reward composition shifts, validating our design.  
+
+* **Episode 0-10: Learning to Approach**  
+  (`cube_gripper_distance`)  
+  <img src="media/100_episode_f.png" width="400"/><br>
+  
+* **Episode 150-300: Mastering the Lift**  
+  (`cube_lifted`)
+  <img src="media/500_episode_f.png" width="400"/><br>
+  
+* **Episode 400-: Focusing on the Goal**  
+  (`goal_distance`)
+  <img src="media/1000_episode_f.png" width="400"/><br>
+  <img src="media/100000_episode_f.png" width="400"/><br>
 
 ## Customization  
 The framework allows various customizations:
