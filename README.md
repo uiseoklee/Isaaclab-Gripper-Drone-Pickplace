@@ -46,17 +46,17 @@ Our design philosophy follows two core principles:
 The following graphs show how the reward composition shifts, validating our design.  
 
 * **Episode 0-10: Learning to Approach**  
-  (`cube_gripper_distance`)  
-  <img src="media/100_episode_f.png" width="600"/><br>
+  `cube_gripper_distance`  
+  <img src="media/100_episode_f.png" width="800"/><br>
   
 * **Episode 150-300: Mastering the Lift**  
-  (`cube_lifted`)  
-  <img src="media/500_episode_f.png" width="600"/><br>
+  `cube_lifted`  
+  <img src="media/500_episode_f.png" width="800"/><br>
   
 * **Episode 400-: Focusing on the Goal**  
-  (`goal_distance`)  
-  <img src="media/1000_episode_f.png" width="600"/><br>
-  <img src="media/100000_episode_f.png" width="600"/><br>
+  `goal_distance`  
+  <img src="media/1000_episode_f.png" width="800"/><br>
+  <img src="media/100000_episode_f.png" width="800"/><br>
 
 ## Customization  
 The framework allows various customizations:
