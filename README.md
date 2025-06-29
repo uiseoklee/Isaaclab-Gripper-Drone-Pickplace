@@ -45,8 +45,7 @@ Our design philosophy follows two core principles:
 ### Reward Contribution Over Time  
 The following graphs show how the reward composition shifts, validating our design.  
 
-* **Episode 0-10: Learning to Approach**  
-  `cube_gripper_distance`  
+* **Episode 0-10: Learning to Approach** / **key reward:** `cube_gripper_distance`  
   <img src="media/100_episode_f.png" width="800"/><br>
   
 * **Episode 150-300: Mastering the Lift**  
