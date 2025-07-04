@@ -44,13 +44,10 @@ class QuadcopterEnvWindow(BaseEnvWindow):
             env: The environment object.
             window_name: The name of the window. Defaults to "IsaacLab".
         """
-        # initialize base window
         super().__init__(env, window_name)
-        # add custom UI elements
         with self.ui_window_elements["main_vstack"]:
             with self.ui_window_elements["debug_frame"]:
                 with self.ui_window_elements["debug_vstack"]:
-                    # add command manager visualization
                     self._create_debug_vis_ui_element("targets", self.env)
 
 
@@ -188,24 +185,24 @@ class QuadcopterEnv(DirectRLEnv):
         self._gravity_magnitude = torch.tensor(self.sim.cfg.gravity, device=self.device).norm()
         self._robot_weight = (self._robot_mass * self._gravity_magnitude).item()
 
-        # 그리퍼 관련 인덱스 초기화
+        # Initialize gripper-related indices
         self.hand_link_idx = self._robot.find_bodies("panda_hand")[0]
         self.left_finger_idx = self._robot.find_bodies("panda_leftfinger")[0]
         self.right_finger_idx = self._robot.find_bodies("panda_rightfinger")[0]
         
-        # 큐브 잡기 상태 추적
+        # Track cube grabbing state
         self._keep_gripper_closed = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self._cube_grabbed = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         
-        # 그리퍼-큐브 관련 상태 변수 (중복 계산 방지)
+        # Gripper-cube related state variables (prevent duplicate calculations)
         self._gripper_center = torch.zeros(self.num_envs, 3, device=self.device)
         self._cube_lifted = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self._gripper_to_cube = torch.zeros(self.num_envs, 3, device=self.device)
 
-        # add handle for debug visualization (this is set to a valid handle inside set_debug_vis)
+        # Add handle for debug visualization
         self.set_debug_vis(self.cfg.debug_vis)
 
-        # 보상 그래프를 위한 데이터 저장소 추가
+        # Add data storage for reward graphs
         self.reward_history = {
             "episodes": [],
             "lin_vel": [],
@@ -235,38 +232,38 @@ class QuadcopterEnv(DirectRLEnv):
         light_cfg.func("/World/Light", light_cfg)
 
     def _pre_physics_step(self, actions: torch.Tensor):
-        # 모든 환경에 대한 인덱스 생성
+        # Create indices for all environments
         env_ids = torch.arange(self.num_envs, device=self.device)
         
         self._actions = actions.clone().clamp(-1.0, 1.0)
         
-        # 추력 제어
+        # Thrust control
         self._thrust[:, 0, 2] = self.cfg.thrust_to_weight * self._robot_weight * (self._actions[:, 0] + 1.0) / 2.0
         
-        # 모멘트 제어
+        # Moment control
         self._moment[:, 0, :] = self.cfg.moment_scale * self._actions[:, 1:4]
         
-        # 그리퍼 관절 제어
+        # Gripper joint control
         joint_pos = self._robot.data.joint_pos.clone()
         joint_vel = self._robot.data.joint_vel.clone()
         
-        # 손 관절 제어
+        # Hand joint control
         hand_joint_idx = self._robot.find_joints("panda_hand_joint")[0]
         if isinstance(hand_joint_idx, (list, torch.Tensor)):
             hand_joint_idx = hand_joint_idx[0]
         
-        # 큐브를 잡지 않은 환경에서만 회전 허용
+        # Only allow rotation in environments where cube is not grabbed
         not_grabbed_mask = ~self._cube_grabbed
         if torch.any(not_grabbed_mask):
-            # 잡지 않은 환경에만 회전 적용
+            # Apply rotation only to environments where cube is not grabbed
             joint_pos[not_grabbed_mask, hand_joint_idx] += self._actions[not_grabbed_mask, 4] * 0.1
         
-        # 큐브 잡은 상태에서는 현재 위치 유지 (추가 회전 없음)
-        # 회전 방지를 위해 속도도 0으로 설정
+        # When cube is grabbed, maintain current position (no additional rotation)
+        # Set velocity to zero to prevent rotation
         if torch.any(self._cube_grabbed):
             joint_vel[self._cube_grabbed, hand_joint_idx] = 0.0
         
-        # 손가락 관절 제어 - 각 손가락 독립적으로 제어
+        # Finger joint control - control each finger independently
         finger1_joint_idx = self._robot.find_joints("panda_finger_joint1")[0]
         finger2_joint_idx = self._robot.find_joints("panda_finger_joint2")[0]
         
@@ -275,26 +272,26 @@ class QuadcopterEnv(DirectRLEnv):
         if isinstance(finger2_joint_idx, (list, torch.Tensor)):
             finger2_joint_idx = finger2_joint_idx[0]
         
-        # 독립적 손가락 제어 - 평균을 사용하지 않고 각각 제어
-        left_grip_action = self._actions[:, 5].unsqueeze(1)   # 왼쪽 손가락 액션
-        right_grip_action = self._actions[:, 6].unsqueeze(1)  # 오른쪽 손가락 액션
+        # Independent finger control
+        left_grip_action = self._actions[:, 5].unsqueeze(1)   # Left finger action
+        right_grip_action = self._actions[:, 6].unsqueeze(1)  # Right finger action
         
-        # 손가락 조인트 범위 더 제한 (안정성 향상)
-        min_grip = 0.003  # 최소 그립 거리
-        max_grip = 0.008  # 최대 그립 거리
+        # Further restrict finger joint range (improve stability)
+        min_grip = 0.003  # Min grip distance
+        max_grip = 0.008  # Max grip distance
         
-        # 손가락 위치 계산 시 범위 제한
+        # Calculate finger positions with range limits
         left_grip_pos = 0.01 - 0.007 * (left_grip_action + 1.0) / 2.0
         right_grip_pos = 0.01 - 0.007 * (right_grip_action + 1.0) / 2.0
         
-        # 현재 큐브와의 거리에 따라 적응형 그립 조절
+        # Adaptive grip adjustment based on distance to cube
         if hasattr(self, "_gripper_to_cube"):
             cube_distance = torch.norm(self._gripper_to_cube, dim=1)
             close_to_cube = (cube_distance < 0.03).unsqueeze(1)
             
-            # 큐브 근처에서는 더 정밀한 그립 제어
+            # More precise grip control near cube
             if torch.any(close_to_cube):
-                # 큐브에 가까울 때 더 좁은 범위의 그립 허용
+                # Apply narrower grip range when close to cube
                 left_grip_pos = torch.where(
                     close_to_cube, 
                     torch.clamp(left_grip_pos, min_grip, max_grip),
@@ -306,19 +303,19 @@ class QuadcopterEnv(DirectRLEnv):
                     right_grip_pos
                 )
         
-        # 각 손가락에 독립적으로 위치 적용
+        # Apply positions independently to each finger
         joint_pos[:, finger1_joint_idx] = left_grip_pos.squeeze()
         joint_pos[:, finger2_joint_idx] = right_grip_pos.squeeze()
         
-        # 관절 상태 업데이트
+        # Update joint state
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None)
 
     def _compute_intermediate_values(self, env_ids: torch.Tensor | None = None):
-        """그리퍼와 큐브 간의 관계 계산"""
+        """Calculate gripper-cube relationship"""
         if env_ids is None:
             env_ids = torch.arange(self.num_envs, device=self.device)
             
-        # 그리퍼 중심 위치 계산
+        # Calculate gripper center position
         left_finger_pos = self._robot.data.body_pos_w[env_ids, self.left_finger_idx]
         right_finger_pos = self._robot.data.body_pos_w[env_ids, self.right_finger_idx]
         
@@ -327,77 +324,77 @@ class QuadcopterEnv(DirectRLEnv):
         if len(right_finger_pos.shape) == 3:
             right_finger_pos = right_finger_pos.squeeze(1)
         
-        # 그리퍼 센터 계산
+        # Calculate gripper center
         if env_ids.shape[0] == self.num_envs:
             self._gripper_center = (left_finger_pos + right_finger_pos) / 2
         else:
             self._gripper_center[env_ids] = (left_finger_pos + right_finger_pos) / 2
         
-        # 큐브 위치
+        # Cube position
         cube_pos_w = self._cube.data.root_state_w[env_ids, :3]
         
-        # 그리퍼-큐브 상대 위치
+        # Gripper-to-cube relative position
         if env_ids.shape[0] == self.num_envs:
             self._gripper_to_cube = torch.abs(self._gripper_center - cube_pos_w)
         else:
             self._gripper_to_cube[env_ids] = torch.abs(self._gripper_center[env_ids] - cube_pos_w)
         
-        # 큐브가 들림 여부 확인
+        # Check if cube is lifted
         table_height = 0.05
         cube_height = cube_pos_w[:, 2] - table_height
         is_lifted = cube_height > 0.06
         
-        # 전체 환경에 대해 업데이트
+        # Update for all environments
         if env_ids.shape[0] == self.num_envs:
             self._cube_lifted = is_lifted
         else:
             self._cube_lifted[env_ids] = is_lifted
         
-        # 개선된 큐브 잡기 판단 로직
+        # Improved cube grabbing detection
         finger_distance = torch.norm(right_finger_pos - left_finger_pos, dim=1)
         cube_distance = torch.norm(self._gripper_center[env_ids] - cube_pos_w, dim=1)
         
-        # 큐브 크기 고려한 최적 그립 거리
-        optimal_grip_distance = 0.0045  # 큐브 크기에 맞는 최적 그립 거리
-        grip_tolerance = 0.003  # 허용 오차
+        # Optimal grip distance considering cube size
+        optimal_grip_distance = 0.0045  # Optimal grip distance for cube size
+        grip_tolerance = 0.003  # Tolerance
         
-        # 그립 품질 점수 계산 (1에 가까울수록 좋은 그립)
+        # Calculate grip quality score (closer to 1 = better grip)
         grip_quality = 1.0 - torch.abs(finger_distance - optimal_grip_distance) / grip_tolerance
         grip_quality = torch.clamp(grip_quality, 0.0, 1.0)
         
-        # 안정적인 그립 형성 여부 확인 (약간의 이력현상 포함)
+        # Check for stable grip formation (with hysteresis)
         if not hasattr(self, "_prev_grabbed"):
             self._prev_grabbed = torch.zeros_like(is_lifted, dtype=torch.bool)
             self._grip_stability = torch.zeros_like(is_lifted, dtype=torch.float)
         
-        # 기본 그립 조건
+        # Basic grip condition
         basic_grip = (finger_distance < 0.008) & (finger_distance > 0.003) & (cube_distance < 0.012) & is_lifted
         
-        # 이전에 잡고 있었던 상태 반영 (약간의 히스테리시스 추가)
+        # Include previous state (add hysteresis)
         stable_grip = self._prev_grabbed & (finger_distance < 0.01) & (cube_distance < 0.018) & is_lifted
         
-        # 두 조건 결합
+        # Combine conditions
         is_grabbed = basic_grip | stable_grip
         
-        # 그립 안정성 점수 업데이트
+        # Update grip stability score
         self._grip_stability = torch.where(
             is_grabbed,
-            torch.clamp(self._grip_stability + 0.1, 0.0, 1.0),  # 잡고 있으면 안정성 증가
-            torch.zeros_like(self._grip_stability)  # 놓치면 리셋
+            torch.clamp(self._grip_stability + 0.1, 0.0, 1.0),  # Increase stability if grabbed
+            torch.zeros_like(self._grip_stability)  # Reset if dropped
         )
         
-        # 안정성 기간 기반 그립 보정
-        is_grabbed = is_grabbed & (self._grip_stability > 0.2)  # 일정 시간 이상 유지된 그립만 인정
+        # Only consider grips maintained for some time
+        is_grabbed = is_grabbed & (self._grip_stability > 0.2)  # Only accept grips maintained for a while
         
-        # 상태 업데이트
+        # Update states
         self._prev_grabbed = is_grabbed
         self._cube_grabbed[env_ids] = is_grabbed
 
     def _apply_action(self):
-        # 기본 추력과 모멘트 적용
+        # Apply base thrust and moment
         self._robot.set_external_force_and_torque(self._thrust, self._moment, body_ids=self._body_id)
 
-        # 큐브를 잡고 있는 환경에 대해 그리퍼를 닫은 상태로 유지
+        # For environments with grabbed cube, maintain closed gripper
         if torch.any(self._cube_grabbed):
             grabbed_env_ids = torch.where(self._cube_grabbed)[0]
             joint_pos = self._robot.data.joint_pos.clone()
@@ -411,11 +408,11 @@ class QuadcopterEnv(DirectRLEnv):
             if isinstance(finger2_joint_idx, (list, torch.Tensor)):
                 finger2_joint_idx = finger2_joint_idx[0]
             
-            # 현재 손가락 위치 저장 (첫 잡았을 때의 상태 유지)
+            # Store current finger positions (maintain initial grip state)
             if not hasattr(self, "_grip_positions"):
                 self._grip_positions = torch.zeros((self.num_envs, 2), device=self.device)
-                self._grip_positions[:, 0] = 0.0035  # 최적 그립 위치
-                self._grip_positions[:, 1] = 0.0035  # 최적 그립 위치
+                self._grip_positions[:, 0] = 0.0035  # Optimal grip position
+                self._grip_positions[:, 1] = 0.0035  # Optimal grip position
                 
             for idx in grabbed_env_ids:
                 if not self._keep_gripper_closed[idx]:
@@ -424,7 +421,7 @@ class QuadcopterEnv(DirectRLEnv):
                     self._grip_positions[idx, 1] = optimal_grip
                     self._keep_gripper_closed[idx] = True
             
-            # 각 환경마다 그립 위치 강제 적용 (더 강하게 잡도록)
+            # Force apply grip position for each environment (stronger grip)
             for idx in grabbed_env_ids:
                 joint_pos[idx, finger1_joint_idx] = self._grip_positions[idx, 0] * 0.85  
                 joint_pos[idx, finger2_joint_idx] = self._grip_positions[idx, 1] * 0.85
@@ -434,34 +431,27 @@ class QuadcopterEnv(DirectRLEnv):
             self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None)
 
     def _get_observations(self) -> dict:
-        # 먼저 중간값 계산하여 그리퍼-큐브 관계 업데이트
+        # First update gripper-cube relationship by calculating intermediate values
         self._compute_intermediate_values()
         
-        # 기본 드론 관측값
+        # Basic drone observations
         desired_pos_b, _ = subtract_frame_transforms(
             self._robot.data.root_state_w[:, :3], self._robot.data.root_state_w[:, 3:7], self._desired_pos_w
         )
-        
-        # 큐브 정보 추가 (cube_pos_w와 cube_pos_b 계산은 유지하되, 관측값에는 포함하지 않음)
-        cube_pos_w = self._cube.data.root_state_w[:, :3]
-        # 아래 코드는 다른 계산에 필요할 수 있으므로 유지하지만, 관측값엔 포함하지 않음
-        cube_pos_b, _ = subtract_frame_transforms(
-            self._robot.data.root_state_w[:, :3], self._robot.data.root_state_w[:, 3:7], cube_pos_w
-        )
 
-        # 관측값 결합 (cube_pos_b 제외)
+        # Combine observations
         obs = torch.cat(
             [
-                # 기본 드론 상태
-                self._robot.data.root_lin_vel_b,       # 선속도 (3차원)
-                self._robot.data.root_ang_vel_b,       # 각속도 (3차원) 
-                self._robot.data.projected_gravity_b,  # 중력 방향 (3차원)
-                desired_pos_b,                        # 목표 상대 위치 (3차원)
+                # Basic drone state
+                self._robot.data.root_lin_vel_b,       # Linear velocity (3D)
+                self._robot.data.root_ang_vel_b,       # Angular velocity (3D) 
+                self._robot.data.projected_gravity_b,  # Gravity direction (3D)
+                desired_pos_b,                        # Target relative position (3D)
                 
-                # 큐브 관련 정보 (cube_pos_b 제거)
-                self._gripper_to_cube,                # 그리퍼-큐브 상대 위치 (3차원)   
-                self._cube_lifted.unsqueeze(1),       # 큐브 들림 여부 (1차원)
-                self._cube_grabbed.unsqueeze(1),      # 큐브 잡힘 상태 (1차원)
+                # Cube related information
+                self._gripper_to_cube,                # Gripper-to-cube relative position (3D)   
+                self._cube_lifted.unsqueeze(1),       # Is cube lifted flag (1D)
+                self._cube_grabbed.unsqueeze(1),      # Is cube grabbed flag (1D)
             ],
             dim=-1,
         )
@@ -470,42 +460,42 @@ class QuadcopterEnv(DirectRLEnv):
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
-        # observation 대신 직접 속성에서 값을 가져와 보상 계산
+        # Get values directly from properties for reward calculation
         lin_vel = torch.sum(torch.square(self._robot.data.root_lin_vel_b), dim=1)
         ang_vel = torch.sum(torch.square(self._robot.data.root_ang_vel_b), dim=1)
         
-        # 1. 그리퍼-큐브 거리 보상
+        # 1. Gripper-cube distance reward
         cube_gripper_distance = torch.norm(self._gripper_to_cube, dim=1)
         distance_std = 0.3
         cube_gripper_reward = 1 - torch.tanh(cube_gripper_distance / distance_std)
         
-        # 2. 큐브 들림 보상
+        # 2. Cube lifted reward
         lifted_mask = self._cube_lifted
         
-        # 높이 추정 (정확한 높이는 observation에 없으므로 lifted 상태 활용)
+        # Estimate height (use lifted state as exact height is not in observations)
         lift_reward = torch.zeros_like(cube_gripper_distance)
-        lift_reward[lifted_mask] = 25.0  # 들린 경우 고정 보상 부여
+        lift_reward[lifted_mask] = 25.0  # Fixed reward for lifted state
         
-        # 3. 큐브-목표 거리 보상 (로봇-목표 거리로 대체)
+        # 3. Cube-to-goal distance reward (using robot-to-goal distance)
         distance_to_goal = torch.norm(self._desired_pos_w - self._robot.data.root_pos_w, dim=1)
         goal_std = 0.8
         goal_distance_reward = torch.zeros_like(distance_to_goal)
         
-        # 큐브를 잡고 최소 높이 이상일 때만 목표 거리 보상 적용
+        # Only apply goal distance reward when cube is grabbed
         goal_reward_mask = self._cube_grabbed
         goal_distance_reward[goal_reward_mask] = (1.0 - torch.tanh(distance_to_goal[goal_reward_mask] / goal_std))
         goal_distance_reward = goal_distance_reward * self.cfg.distance_to_goal_reward_scale
 
-        # 기본 보상 계산
+        # Basic reward calculation
         rewards = {
-            "lin_vel": lin_vel * -50.0, # 선속도 패널티
-            "ang_vel": ang_vel * -10.0, # 각속도 패널티
-            "cube_gripper_distance": cube_gripper_reward * 15.0, # 큐브로의 접근
-            "cube_lifted": lift_reward * 80, # 큐브 들어올리기
-            "goal_distance": goal_distance_reward * 5000, # 큐브 든 상태로 목표 위치 접근
+            "lin_vel": lin_vel * -50.0, # Linear velocity penalty
+            "ang_vel": ang_vel * -10.0, # Angular velocity penalty
+            "cube_gripper_distance": cube_gripper_reward * 15.0, # Approach to cube
+            "cube_lifted": lift_reward * 80, # Lifting the cube
+            "goal_distance": goal_distance_reward * 5000, # Approaching goal with grabbed cube
         }
         
-        # 안전한 보상 합산 방식
+        # Safe reward aggregation
         total_reward = torch.zeros_like(lin_vel)
         for value in rewards.values():
             total_reward += value
@@ -516,13 +506,13 @@ class QuadcopterEnv(DirectRLEnv):
             else:
                 self._episode_sums[key] = value
 
-        # 보상 로깅
+        # Log reward changes
         self.log_reward_changes(rewards, total_reward)
 
         return total_reward * self.step_dt
 
     def log_reward_changes(self, rewards, total_reward=None):
-        # 총 보상 계산
+        # Calculate total reward
         if total_reward is None:
             reward_values = [value.mean().item() for value in rewards.values()]
             total_reward = sum(reward_values)
@@ -530,15 +520,15 @@ class QuadcopterEnv(DirectRLEnv):
             if isinstance(total_reward, torch.Tensor):
                 total_reward = total_reward.mean().item()
         
-        # 절대값 합계 계산
+        # Calculate absolute value sum
         reward_abs_values = [abs(value.mean().item()) for value in rewards.values()]
         abs_sum = sum(reward_abs_values)
         
-        # 0으로 나누기 방지
+        # Prevent division by zero
         eps = 1e-10
         safe_abs_sum = max(abs_sum, eps)
         
-        # 초기 보상값 저장 또는 비교
+        # Store or compare initial reward values
         if not hasattr(self, "_initial_rewards") or self._initial_rewards is None:
             self._initial_rewards = {key: value.mean().item() for key, value in rewards.items()}
             initial_total = sum(self._initial_rewards.values())
@@ -546,75 +536,77 @@ class QuadcopterEnv(DirectRLEnv):
             initial_abs_sum = sum(initial_abs_values)
             safe_initial_abs_sum = max(initial_abs_sum, eps)
             
-            print(f"초기 총 보상: {initial_total:.4f}")
-            print("초기 보상값 저장:")
+            print(f"Initial total reward: {initial_total:.4f}")
+            print("Storing initial reward values:")
             for key, value in self._initial_rewards.items():
                 percentage = (abs(value) / safe_initial_abs_sum) * 100
                 sign_str = "" if value >= 0 else "-"
-                print(f"초기 Reward {key}: {value:.4f} ({sign_str}{percentage:.2f}% 기여도)")
+                print(f"Initial Reward {key}: {value:.4f} ({sign_str}{percentage:.2f}% contribution)")
         else:
-            print(f"\n총 보상: {total_reward:.4f}")
-            print("현재 보상값 (기여도 %, 초기값 대비 변화량):")
+            print(f"\nTotal reward: {total_reward:.4f}")
+            print("Current reward values (contribution %, change from initial):")
             for key, value in rewards.items():
                 current_value = value.mean().item()
                 initial_value = self._initial_rewards.get(key, 0.0)
                 
-                # 기여도 계산
+                # Calculate contribution
                 abs_percentage = (abs(current_value) / safe_abs_sum) * 100
                 sign_str = "" if current_value >= 0 else "-"
                 
-                # 변화율 계산
+                # Calculate change rate
                 if abs(initial_value) > eps:
                     percentage_change = ((current_value - initial_value) / abs(initial_value)) * 100
                     change_sign = "+" if percentage_change >= 0 else ""
-                    print(f"Reward {key}: {current_value:.4f} ({sign_str}{abs_percentage:.2f}% 기여도, {change_sign}{percentage_change:.2f}% 변화)")
+                    print(f"Reward {key}: {current_value:.4f} ({sign_str}{abs_percentage:.2f}% contribution, {change_sign}{percentage_change:.2f}% change)")
                 else:
                     if abs(current_value) <= eps:
-                        print(f"Reward {key}: {current_value:.4f} ({sign_str}{abs_percentage:.2f}% 기여도, 변화 없음)")
+                        print(f"Reward {key}: {current_value:.4f} ({sign_str}{abs_percentage:.2f}% contribution, no change)")
                     else:
-                        direction = "증가" if current_value > 0 else "감소"
-                        print(f"Reward {key}: {current_value:.4f} ({sign_str}{abs_percentage:.2f}% 기여도, 큰 폭 {direction})")
+                        direction = "increase" if current_value > 0 else "decrease"
+                        print(f"Reward {key}: {current_value:.4f} ({sign_str}{abs_percentage:.2f}% contribution, significant {direction})")
 
-        # 에피소드 보상 데이터 기록 (기존 로깅 코드 뒤에 추가)
+        # Record episode reward data
         if hasattr(self, "reward_history"):
-            # 총 보상값 확정
+            # Finalize total reward
             if total_reward is None:
                 total_reward = sum([value.mean().item() for value in rewards.values()])
             elif isinstance(total_reward, torch.Tensor):
                 total_reward = total_reward.mean().item()
             
-            # 데이터 저장
+            # Store data
             self.reward_history["episodes"].append(self.episode_counter)
             self.reward_history["total_reward"].append(total_reward)
             
-            # 각 보상 요소 저장
+            # Store each reward component
             for key, value in rewards.items():
                 if key in self.reward_history:
                     self.reward_history[key].append(value.mean().item())
             
-            # 에피소드 카운터 증가
+            # Increment episode counter
             self.episode_counter += 1                        
 
     def plot_reward_graph(self, save=True, show=False, filename=None):
-        """보상 그래프를 생성하고 저장/표시합니다.
+        """Generate and save/display reward graphs. Filter extreme values for visualization.
         
         Args:
-            save (bool): 그래프 저장 여부
-            show (bool): 그래프 표시 여부
-            filename (str): 지정된 파일명 (None이면 자동 생성)
+            save (bool): Whether to save the graph
+            show (bool): Whether to display the graph
+            filename (str): Specific filename (None for auto-generated)
         """
         if len(self.reward_history["episodes"]) == 0:
-            print("그래프를 그릴 보상 데이터가 없습니다.")
+            print("No reward data available to plot.")
             return
             
         try:
-            # 그래프 생성 - 행 수를 3에서 4로 늘려서 새 그래프 추가
+            import numpy as np  # Required for filtering
+            
+            # Create graph with increased rows for additional plots
             plt.figure(figsize=(20, 20))
             
-            # 개별 보상 그래프
+            # Individual reward components
             reward_keys = ["lin_vel", "ang_vel", "cube_gripper_distance", "cube_lifted", "goal_distance"]
             
-            # 1. 개별 보상 그래프
+            # 1. Individual reward graphs
             for i, key in enumerate(reward_keys):
                 if key in self.reward_history and len(self.reward_history[key]) > 0:
                     plt.subplot(4, 2, i+1)
@@ -624,7 +616,7 @@ class QuadcopterEnv(DirectRLEnv):
                     plt.ylabel('Reward Value')
                     plt.grid(True)
             
-            # 2. 총 보상 그래프 (goal_distance를 포함하지 않도록 명시적 수정)
+            # 2. Total reward graph
             plt.subplot(4, 2, 6)
             plt.plot(self.reward_history["episodes"], self.reward_history["total_reward"], 'r-')
             plt.title('Total Reward')
@@ -632,12 +624,12 @@ class QuadcopterEnv(DirectRLEnv):
             plt.ylabel('Reward Value')
             plt.grid(True)
             
-            # 3. 모든 보상을 한 그래프에 표시 (절대값 기준)
+            # 3. Compare all rewards in one graph (absolute value)
             plt.subplot(4, 2, 7)
             colors = ['b', 'g', 'r', 'c', 'm']
             for i, key in enumerate(reward_keys):
                 if key in self.reward_history and len(self.reward_history[key]) > 0:
-                    # 절대 스케일이 매우 다른 경우 선의 두께와 스타일로 구분
+                    # Differentiate lines based on scale
                     data = self.reward_history[key]
                     min_val = min(data) if data else 0
                     max_val = max(data) if data else 0
@@ -661,22 +653,22 @@ class QuadcopterEnv(DirectRLEnv):
             plt.grid(True)
             plt.legend(loc='best')
             
-            # 4. NEW: 백분율(%) 기준 보상 기여도 그래프 추가
+            # 4. Reward contribution percentage graph
             plt.subplot(4, 2, 8)
             
-            # 각 에피소드별 보상의 절대값 합계 계산
+            # Calculate total absolute rewards for each episode
             total_abs_rewards = []
             for ep_idx in range(len(self.reward_history["episodes"])):
                 ep_abs_sum = 0
                 for key in reward_keys:
                     if key in self.reward_history and ep_idx < len(self.reward_history[key]):
                         ep_abs_sum += abs(self.reward_history[key][ep_idx])
-                total_abs_rewards.append(max(ep_abs_sum, 1e-10))  # 0으로 나누기 방지
+                total_abs_rewards.append(max(ep_abs_sum, 1e-10))  # Prevent division by zero
                 
-            # 백분율 데이터 생성 및 그래프 그리기
+            # Generate and plot percentage data
             for i, key in enumerate(reward_keys):
                 if key in self.reward_history and len(self.reward_history[key]) > 0:
-                    # 백분율 계산
+                    # Calculate percentages
                     percentage_data = []
                     for ep_idx in range(len(self.reward_history["episodes"])):
                         if ep_idx < len(self.reward_history[key]):
@@ -696,19 +688,19 @@ class QuadcopterEnv(DirectRLEnv):
             plt.title('Compensation Contribution Percentage (%)')
             plt.xlabel('Episodes')
             plt.ylabel('Contribution (%)')
-            plt.ylim(0, 100)  # y축 범위 0~100%로 설정
+            plt.ylim(0, 100)  # Set y-axis range to 0-100%
             plt.grid(True)
             plt.legend(loc='best')
             
             plt.tight_layout()
             
-            # 그래프 저장
+            # Save graph
             if save:
-                # 저장 디렉토리 생성
+                # Create directory if needed
                 save_dir = os.path.expanduser("~/reward_graphs")
                 os.makedirs(save_dir, exist_ok=True)
                 
-                # 파일명에 범위 표시
+                # Create filename with episode range
                 if filename is None:
                     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                     start_ep = 0
@@ -717,27 +709,27 @@ class QuadcopterEnv(DirectRLEnv):
                     
                 filepath = os.path.join(save_dir, filename)
                 plt.savefig(filepath)
-                print(f"보상 그래프가 저장되었습니다: {filepath}")
+                print(f"Reward graph saved: {filepath}")
             
-            # 그래프 표시
+            # Display graph
             if show:
                 plt.show()
             else:
                 plt.close()
                 
         except Exception as e:
-            print(f"그래프 생성 중 오류가 발생했습니다: {e}")
+            print(f"Error occurred while creating graph: {e}")
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
-        # 기존 종료 조건
+        # Basic termination conditions
         truncated = self.episode_length_buf >= self.max_episode_length - 1
         died = torch.logical_or(self._robot.data.root_pos_w[:, 2] < 0.1, self._robot.data.root_pos_w[:, 2] > 2.0)
         
-        # 목표 도달 성공 종료 조건 추가
+        # Goal reaching success condition
         robot_pos = self._robot.data.root_pos_w
         distance_to_goal = torch.linalg.norm(self._desired_pos_w - robot_pos, dim=1)
         
-        # 성공 조건: 큐브가 들려있고, 목표 지점에 가까움
+        # Success condition: cube is grabbed and close to goal position
         success = self._cube_grabbed & (distance_to_goal < 0.05)
 
         terminated = torch.logical_or(died, success)
@@ -765,13 +757,13 @@ class QuadcopterEnv(DirectRLEnv):
         extras["Metrics/final_distance_to_goal"] = final_distance_to_goal.item()
         self.extras["log"].update(extras)
 
-        # 추가: 큐브 관련 최종 통계
+        # Additional: cube related final statistics
         if env_ids is not None and len(env_ids) > 0:
             cube_pos = self._cube.data.root_state_w[env_ids, :3]
-            final_cube_height = (cube_pos[:, 2] - 0.05).mean()  # 테이블에서의 높이
+            final_cube_height = (cube_pos[:, 2] - 0.05).mean()  # Height from table
             final_cube_to_goal = torch.linalg.norm(self._desired_pos_w[env_ids] - cube_pos, dim=1).mean()
             
-            # 추가 로깅
+            # Additional logging
             if "Metrics" not in self.extras["log"]:
                 self.extras["log"]["Metrics"] = {}
             self.extras["log"]["Metrics"]["final_cube_height"] = final_cube_height.item()
@@ -780,6 +772,7 @@ class QuadcopterEnv(DirectRLEnv):
         self._robot.reset(env_ids)
         super()._reset_idx(env_ids)
         if len(env_ids) == self.num_envs:
+            # Spread out the resets to avoid spikes in training when many environments reset at a similar time
             self.episode_length_buf = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
 
         self._actions[env_ids] = 0.0
@@ -797,92 +790,95 @@ class QuadcopterEnv(DirectRLEnv):
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
 
-        # 테이블 초기화
+        # Initialize table
         table_state = torch.zeros((len(env_ids), 13), device=self.device)
         table_state[:, :3] = self._terrain.env_origins[env_ids]
-        table_state[:, 2] += 0.05  # 테이블 높이 중심
-        table_state[:, 3] = 1.0    # 쿼터니언 w
+        table_state[:, 2] += 0.05  # Table height center
+        table_state[:, 3] = 1.0    # Quaternion w
         self._table.write_root_state_to_sim(table_state, env_ids)
         
-        # 큐브 초기화
+        # Initialize cube
         cube_state = torch.zeros((len(env_ids), 13), device=self.device)
         cube_state[:, :3] = self._terrain.env_origins[env_ids]
-        cube_state[:, 2] += 0.075  # 테이블 위 큐브 높이
-        cube_state[:, 3] = 1.0     # 쿼터니언 w
+        cube_state[:, 2] += 0.075  # Cube height on table
+        cube_state[:, 3] = 1.0     # Quaternion w
         self._cube.write_root_state_to_sim(cube_state, env_ids)
 
-        # 그리퍼 상태 초기화
+        # Reset gripper state
         self._keep_gripper_closed[env_ids] = False
         
-        # 그래프 생성 조건 판단
+        # Determine whether to create graph
         should_create_graph = False
 
         if self.episode_counter <= 1000:
-            # 1000 에피소드 이전: 100 단위로 그래프 생성 (100, 200, ..., 900, 1000)
+            # Before 1000 episodes: create graph every 100 episodes (100, 200, ..., 900, 1000)
             should_create_graph = self.episode_counter % 100 == 0
             interval_text = "100"
         elif self.episode_counter <= 10000:
-            # 1000~10000 에피소드: 1000 단위로 그래프 생성 (2000, 3000, ..., 9000, 10000)
+            # 1000~10000 episodes: create graph every 1000 episodes (2000, 3000, ..., 9000, 10000)
             should_create_graph = self.episode_counter % 1000 == 0
             interval_text = "1000"
         else:
-            # 10000 에피소드 이후
-            # 정확한 10000 배수 확인
+            # After 10000 episodes
+            # Check for exact multiples of 10000
             is_exact_multiple = self.episode_counter % 10000 == 0
             
-            # 이전 10000 배수 및 다음 10000 배수 계산
+            # Calculate previous and next 10000 milestones
             prev_milestone = (self.episode_counter // 10000) * 10000
             next_milestone = prev_milestone + 10000
             
-            # 1. 정확히 10000의 배수이거나 
-            # 2. 아직 그래프가 생성되지 않았고 현재 에피소드가 다음 10000 배수를 지났을 경우
+            # 1. Exactly multiple of 10000, or 
+            # 2. Graph wasn't created at the last milestone
             if is_exact_multiple:
                 should_create_graph = True
                 milestone_ep = self.episode_counter
             elif hasattr(self, "last_graph_episode"):
-                # 마지막 그래프가 이전 10000 배수에서 생성되었는지 확인
+                # Check if the graph was missed at the previous milestone
                 if self.last_graph_episode < prev_milestone and self.episode_counter > prev_milestone:
                     should_create_graph = True
                     milestone_ep = prev_milestone
-                    print(f"지난 마일스톤({prev_milestone})에서 그래프 생성 누락. 지금 생성합니다.")
+                    print(f"Missed creating graph at milestone ({prev_milestone}). Creating now.")
                 
             interval_text = "10000"
 
-        # 그래프 생성
+        # Create graph if needed
         if should_create_graph:
-            # 이전 그래프 생성 시점을 저장하는 변수
+            # Track last graph creation episode
             if not hasattr(self, "last_graph_episode") or self.last_graph_episode is None:
                 self.last_graph_episode = 0
             
-            # 마지막 생성 시점보다 에피소드가 진행된 경우에만 그래프 생성
-            if self.episode_counter > self.last_graph_episode:  # 최소 100 에피소드 간격
+            # Only create graph if episodes have advanced since last creation
+            if self.episode_counter > self.last_graph_episode:
                 timestamp = datetime.datetime.now().strftime("%Y%m%d")
                 current_ep = self.episode_counter
                 
-                # 파일명에 간격 정보 추가
+                # Add interval info to filename
                 filename = f"reward_graph_{timestamp}_ep{current_ep}_interval{interval_text}.png"
                 
-                # 그래프 생성
+                # Create graph
                 try:
                     self.plot_reward_graph(save=True, show=False, filename=filename)
-                    print(f"에피소드 {current_ep}에서 그래프가 성공적으로 생성되었습니다. (간격: {interval_text})")
+                    print(f"Graph successfully created at episode {current_ep} (interval: {interval_text})")
                     
-                    # 마지막 그래프 생성 에피소드 업데이트
+                    # Update last graph creation episode
                     self.last_graph_episode = current_ep
                 except Exception as e:
-                    print(f"그래프 생성 중 오류 발생: {e}")
+                    print(f"Error creating graph: {e}")
 
     def _set_debug_vis_impl(self, debug_vis: bool):
+        # Create markers if necessary for the first time
         if debug_vis:
             if not hasattr(self, "goal_pos_visualizer"):
                 marker_cfg = CUBOID_MARKER_CFG.copy()
                 marker_cfg.markers["cuboid"].size = (0.05, 0.05, 0.05)
                 marker_cfg.prim_path = "/Visuals/Command/goal_position"
                 self.goal_pos_visualizer = VisualizationMarkers(marker_cfg)
+            # Set their visibility to true
             self.goal_pos_visualizer.set_visibility(True)
         else:
             if hasattr(self, "goal_pos_visualizer"):
                 self.goal_pos_visualizer.set_visibility(False)
 
     def _debug_vis_callback(self, event):
+        # Update the markers
         self.goal_pos_visualizer.visualize(self._desired_pos_w)
