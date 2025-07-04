@@ -89,6 +89,14 @@ The framework allows various customizations:
   ```
   IsaacLab\source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\
   ```
+5. Copy from
+   ```
+  source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\agents\skrl_ppo_cfg.yaml
+   ```
+6. Paste within your IssacLab's folder to
+  ```
+  IsaacLab\source\isaaclab_tasks\isaaclab_tasks\direct\quadcopter\agents\
+  ```
 
 ## Training
 ```
