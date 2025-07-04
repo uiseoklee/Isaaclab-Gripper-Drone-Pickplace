@@ -56,7 +56,7 @@ The following graphs show how the reward composition shifts, validating our desi
 3. **Episode 400 and beyond: Focusing on the Goal** / **key reward:** `goal_distance`
   
   <img src="media/1000_episode_f.png" width="600"/><br>
-  <img src="media/100000_episode_f.png" width="600"/><br>
+  <img src="media/10000_episode_f.png" width="600"/><br>
 
 ## Customization  
 The framework allows various customizations:
@@ -100,10 +100,10 @@ The framework allows various customizations:
 
 ## Training
 ```
-python scripts/reinforcement_learning/skrl/train.py --task Isaac-Quadcopter-Direct-v0 --num_envs 128 --max_iterations 6300
+python scripts/reinforcement_learning/skrl/train.py --task Isaac-Quadcopter-Direct-v0 --num_envs 128 --max_iterations 1000
 ```
 
 ## Playing
 ```
-python scripts/reinforcement_learning/skrl/play.py --task Isaac-Quadcopter-Direct-v0 --checkpoint /home/dmsai3/IsaacLab/logs/skrl/quadcopter_direct/2025-06-25_19-05-18_ppo_torch_29s_100000/checkpoints/best_agent.pt --num_envs 1
+python scripts/reinforcement_learning/skrl/play.py --task Isaac-Quadcopter-Direct-v0 --checkpoint /home/dmsai3/IsaacLab/logs/skrl/quadcopter_direct/2025-07-04_15-55-35_ppo_torch/checkpoints/best_agent.pt --num_envs 1
 ```
