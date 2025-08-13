@@ -47,16 +47,16 @@ The following graphs show how the reward composition shifts, validating our desi
 
 1. **Episode 0-10: Learning to Approach** / **key reward:** `cube_gripper_distance`
   
-  <img src="media/100_episode_f.png" width="600"/><br>
+  <img src="media/100_episode_ff.png" width="600"/><br>
   
 2. **Episode 150-300: Mastering the Lift** / **key reward:** `cube_lifted`
   
-  <img src="media/500_episode_f.png" width="600"/><br>
+  <img src="media/500_episode_ff.png" width="600"/><br>
   
 3. **Episode 400 and beyond: Focusing on the Goal** / **key reward:** `goal_distance`
   
-  <img src="media/1000_episode_f.png" width="600"/><br>
-  <img src="media/10000_episode_f.png" width="600"/><br>
+  <img src="media/1000_episode_ff.png" width="600"/><br>
+  <img src="media/10000_episode_ff.png" width="600"/><br>
 
 ## Customization  
 The framework allows various customizations:
