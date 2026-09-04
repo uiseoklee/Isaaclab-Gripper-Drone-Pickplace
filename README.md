@@ -68,13 +68,13 @@ Our design philosophy follows two core principles:
 The overall reward function, designed according to this philosophy, is composed of the following components (Eq. 6):
 
 $$
-r_t = w_{vel}\, r_{vel} + w_{dist}\, r_{dist} + w_{lift}\, r_{lift} + \mathbb{1}[\text{lifted}]\; w_{goal}\, r_{goal} \qquad (6)
+r_t = w_{vel} \cdot r_{vel} + w_{dist} \cdot r_{dist} + w_{lift} \cdot r_{lift} + \mathbf{1}[\mathrm{lifted}] \cdot w_{goal} \cdot r_{goal} \quad (6)
 $$
 
 with the scalar weights ordered as
 
 $$
-w_{vel} < w_{dist} < w_{lift} < w_{goal} \qquad (7)
+w_{vel} < w_{dist} < w_{lift} < w_{goal} \quad (7)
 $$
 
 Each reward element is as follows:
