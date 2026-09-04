@@ -85,8 +85,8 @@ Each reward element is as follows:
 | $r_{dist}$ | `cube_gripper_distance` | A reward for minimizing the distance between the gripper and the target object. This encourages precise approach behavior. |
 | $r_{lift}$ | `cube_lifted` | A sparse bonus triggered upon successfully lifting the object. It serves as a critical signal for successful grasp execution. |
 | $r_{goal}$ | `goal_distance` | A reward for reducing the distance between the lifted object and the target location. This reward is only activated when the lift condition is satisfied. |
-| $w_{(\cdot)}$ | — | Scalar weights controlling reward importance. They are set such that $w_{vel} < w_{dist} < w_{lift} < w_{goal}$ (Eq. 7), so that larger weights encourage transition to the next behavior. This promotes sequential task completion from approach → grasp and lift (`lift`) → move to target (`goal`). |
-| $\mathbb{1}[\cdot]$ | — | Indicator function (1 if the condition is met, 0 otherwise), used to activate a reward only after prerequisite tasks are completed. |
+| $w_{vel},\ w_{dist},\ w_{lift},\ w_{goal}$ | reward scales in `quadcopter_env.py` | Scalar weights controlling reward importance. They are set such that $w_{vel} < w_{dist} < w_{lift} < w_{goal}$ (Eq. 7), so that larger weights encourage transition to the next behavior. This promotes sequential task completion from approach → grasp and lift (`lift`) → move to target (`goal`). |
+| $\mathbb{I}_{\mathrm{lifted}}$ | `cube_lifted` condition | Indicator function (1 if the object has been lifted, 0 otherwise), used to activate the goal reward only after the grasp-and-lift task is completed. |
 
 This sequential task reward design alleviates the difficulty of the sparse reward problem and helps the agent systematically master each step of a complex task.
 
