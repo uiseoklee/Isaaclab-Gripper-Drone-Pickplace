@@ -5,6 +5,28 @@
 <img src="media/128env_training_f2.gif" width="1200"/>  
 <img src="media/grisp_lift_togoal.gif" width="1200"/>  
 
+## Publication  
+This work has been published in the Proceedings of APISAT 2025 (Springer, Lecture Notes in Mechanical Engineering):
+
+> Ui-Seok Lee, Hyun-Seok Kang, Ye-Chan Park, Tuan Anh Nguyen, Dug-Ki Min, Eun-Mi Choi, Jae-Woo Lee.
+> **Sequential Task Reward Design for Complex Quadcopter Manipulation Using Massively Parallel Simulation.**
+> In: *Proceedings of The 2025 Asia-Pacific International Symposium on Aerospace Technology Vol 6*, Lecture Notes in Mechanical Engineering, pp. 283–293. Springer, Singapore.
+> https://doi.org/10.1007/978-981-92-1319-1_21
+
+If you use this code in your research, please cite:
+
+```bibtex
+@inproceedings{lee2025sequential,
+  title     = {Sequential Task Reward Design for Complex Quadcopter Manipulation Using Massively Parallel Simulation},
+  author    = {Lee, Ui-Seok and Kang, Hyun-Seok and Park, Ye-Chan and Nguyen, Tuan Anh and Min, Dug-Ki and Choi, Eun-Mi and Lee, Jae-Woo},
+  booktitle = {Proceedings of The 2025 Asia-Pacific International Symposium on Aerospace Technology Vol 6},
+  series    = {Lecture Notes in Mechanical Engineering},
+  pages     = {283--293},
+  publisher = {Springer, Singapore},
+  doi       = {10.1007/978-981-92-1319-1_21}
+}
+```
+
 ## Introduction  
 **IsaacLab Quadcopter Manipulation** is a reinforcement learning framework designed to train drone-based robots to manipulate objects. The quadcopters are trained to identify, approach, grasp, and transport objects to designated locations, performing complex sequential tasks.
 
@@ -41,6 +63,32 @@ Our design philosophy follows two core principles:
 
 - **Sequential Guidance**: The reward system guides the agent through a sequence of sub-tasks (e.g., approach -> grisp&lift -> move to goal). Rewards for later stages become more dominant as the agent gains proficiency in earlier ones.  
 - **Conditional Gating**: Rewards for later sub-tasks are gated by the successful completion of earlier ones. For example, the goal_distance reward is only active after the cube_lifted condition is true, enforcing the correct sequence.  
+
+### Reward Formulation  
+The overall reward function, designed according to this philosophy, is composed of the following components (Eq. 6):
+
+$$
+r_t = w_{vel}\, r_{vel} + w_{dist}\, r_{dist} + w_{lift}\, r_{lift} + \mathbb{1}[\text{lifted}]\; w_{goal}\, r_{goal} \qquad (6)
+$$
+
+with the scalar weights ordered as
+
+$$
+w_{vel} < w_{dist} < w_{lift} < w_{goal} \qquad (7)
+$$
+
+Each reward element is as follows:
+
+| Term | Code name | Description |
+|------|-----------|-------------|
+| $r_{vel}$ | `lin_vel`, `ang_vel` | A speed penalty designed to encourage stable flight. It suppresses excessive linear and angular velocities to maintain flight stability. |
+| $r_{dist}$ | `cube_gripper_distance` | A reward for minimizing the distance between the gripper and the target object. This encourages precise approach behavior. |
+| $r_{lift}$ | `cube_lifted` | A sparse bonus triggered upon successfully lifting the object. It serves as a critical signal for successful grasp execution. |
+| $r_{goal}$ | `goal_distance` | A reward for reducing the distance between the lifted object and the target location. This reward is only activated when the lift condition is satisfied. |
+| $w_{(\cdot)}$ | — | Scalar weights controlling reward importance. They are set such that $w_{vel} < w_{dist} < w_{lift} < w_{goal}$ (Eq. 7), so that larger weights encourage transition to the next behavior. This promotes sequential task completion from approach → grasp and lift (`lift`) → move to target (`goal`). |
+| $\mathbb{1}[\cdot]$ | — | Indicator function (1 if the condition is met, 0 otherwise), used to activate a reward only after prerequisite tasks are completed. |
+
+This sequential task reward design alleviates the difficulty of the sparse reward problem and helps the agent systematically master each step of a complex task.
 
 ### Reward Contribution Over Time  
 The following graphs show how the reward composition shifts, validating our design.  
